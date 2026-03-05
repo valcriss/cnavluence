@@ -1,0 +1,247 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+
+:root {
+  --bg: #f7f8fa;
+  --paper: #ffffff;
+  --sidebar-bg: #edf0f4;
+  --sidebar-hover: #e1e6ec;
+  --sidebar-active: #d7dde6;
+  --ink: #1f2937;
+  --text-secondary: #374151;
+  --muted: #8a94a6;
+  --accent: #2f6feb;
+  --accent-strong: #2458c5;
+  --line: #e5e7eb;
+  --line-strong: #d1d5db;
+  --surface-subtle: #f2f4f7;
+  --danger: #c93c37;
+  --radius: 8px;
+  --editor-border: #e1e5ea;
+  --editor-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+  --scrollbar-color: #c2c9d3;
+  --layout-max-width: 1280px;
+  --sidebar-width: 246px;
+}
+
+* {
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-color) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-color);
+  border-radius: 999px;
+}
+
+body {
+  margin: 0;
+  font-family: "Manrope", "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  line-height: 1.5;
+  height: 100vh;
+  overflow: hidden;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent-strong);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 0.46rem 0.78rem;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+button:hover {
+  background: var(--surface-subtle);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.fa-solid,
+.fa-regular {
+  margin-right: 0.35rem;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: #f9fbfc;
+  color: var(--ink);
+  padding: 0.48rem 0.62rem;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid rgba(37, 99, 235, 0.2);
+  outline-offset: 0;
+  border-color: var(--accent);
+  background: #fff;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.scene {
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.surface {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.surface-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.surface-body {
+  padding: 1rem;
+}
+
+.tiptap.ProseMirror {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-family: "Manrope", sans-serif;
+  font-size: 1.02rem;
+  line-height: 1.64;
+  white-space: pre-wrap;
+}
+
+.tiptap.ProseMirror::selection,
+.tiptap.ProseMirror *::selection {
+  background: rgba(37, 99, 235, 0.16);
+}
+
+.tiptap.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #8c9bab;
+  pointer-events: none;
+  height: 0;
+}
+
+.tiptap.ProseMirror p {
+  margin: 0.72rem 0;
+}
+
+.tiptap.ProseMirror h1,
+.tiptap.ProseMirror h2,
+.tiptap.ProseMirror h3 {
+  color: #111827;
+  margin: 1.2rem 0 0.6rem;
+  line-height: 1.25;
+}
+
+.tiptap.ProseMirror h1 {
+  font-size: 1.75rem;
+}
+
+.tiptap.ProseMirror h2 {
+  font-size: 1.35rem;
+}
+
+.tiptap.ProseMirror h3 {
+  font-size: 1.1rem;
+}
+
+.tiptap.ProseMirror ul,
+.tiptap.ProseMirror ol {
+  margin: 0.6rem 0 0.6rem 1.3rem;
+}
+
+.tiptap.ProseMirror blockquote {
+  margin: 0.9rem 0;
+  padding: 0.5rem 0.8rem;
+  border-left: 3px solid #b7c6df;
+  background: #f7f8fa;
+  color: #4a5565;
+}
+
+.tiptap.ProseMirror code {
+  background: #f1f2f4;
+  border-radius: 4px;
+  padding: 0.1rem 0.3rem;
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 0.88em;
+}
+
+.tiptap.ProseMirror pre {
+  background: #1f2937;
+  color: #f9fafb;
+  border-radius: 8px;
+  padding: 0.8rem 0.95rem;
+  overflow-x: auto;
+}
+
+.tiptap.ProseMirror pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+.tiptap.ProseMirror table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.8rem 0;
+}
+
+.tiptap.ProseMirror th,
+.tiptap.ProseMirror td {
+  border: 1px solid #e1e5ea;
+  padding: 0.4rem 0.55rem;
+  vertical-align: top;
+}
+
+.tiptap.ProseMirror th {
+  background: #f4f6f8;
+  font-weight: 600;
+}
+
+.tiptap.ProseMirror:focus {
+  border-color: transparent;
+  box-shadow: none;
+}

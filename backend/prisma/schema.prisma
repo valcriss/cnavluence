@@ -1,0 +1,247 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum AuthProvider {
+  LOCAL
+  OIDC
+}
+
+enum SiteRole {
+  SITE_ADMIN
+  SITE_USER
+}
+
+enum SpaceRole {
+  SPACE_ADMIN
+  SPACE_EDITOR
+  SPACE_VIEWER
+}
+
+enum VersionReason {
+  AUTO_TIMER
+  AUTO_SESSION_END
+  MANUAL
+  RESTORE
+}
+
+enum RestrictionType {
+  VIEW
+  EDIT
+}
+
+enum AuditEventType {
+  SPACE_CREATED
+  SPACE_ROLE_CHANGED
+  PAGE_CREATED
+  PAGE_RENAMED
+  PAGE_MOVED
+  PAGE_ARCHIVED
+  PAGE_RESTORED
+  PAGE_PERMISSION_CHANGED
+  PAGE_VERSION_CREATED
+  PAGE_VERSION_RESTORED
+  ATTACHMENT_UPLOADED
+}
+
+model User {
+  id             String           @id @default(cuid())
+  email          String           @unique
+  normalizedEmail String          @unique
+  displayName    String
+  passwordHash   String?
+  status         UserStatus       @default(ACTIVE)
+  siteRole       SiteRole         @default(SITE_USER)
+  identities     AuthIdentity[]
+  memberships    SpaceMembership[]
+  pageVersions   PageVersion[]    @relation("versionActor")
+  auditLogs      AuditLog[]       @relation("auditActor")
+  attachments    Attachment[]
+  pageEdits      PageEditorSession[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model AuthIdentity {
+  id         String       @id @default(cuid())
+  userId     String
+  provider   AuthProvider
+  subject    String
+  createdAt  DateTime     @default(now())
+
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject])
+}
+
+model Space {
+  id            String           @id @default(cuid())
+  key           String           @unique
+  name          String
+  memberships   SpaceMembership[]
+  pages         Page[]
+  attachments   Attachment[]
+  auditLogs     AuditLog[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+model SpaceMembership {
+  userId       String
+  spaceId      String
+  role         SpaceRole
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  space        Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@id([userId, spaceId])
+}
+
+model Page {
+  id              String              @id @default(cuid())
+  spaceId          String
+  parentId         String?
+  title            String
+  slug             String
+  archived         Boolean             @default(false)
+  isTemplate       Boolean             @default(false)
+  createdByUserId  String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  space            Space               @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  parent           Page?               @relation("PageTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children         Page[]              @relation("PageTree")
+  content          PageContent?
+  versions         PageVersion[]
+  redirects        PageRedirect[]
+  restrictions     PageRestriction[]
+  backlinksFrom    LinkIndex[]         @relation("backlink_from")
+  backlinksTo      LinkIndex[]         @relation("backlink_to")
+  editors          PageEditorSession[]
+  attachments      Attachment[]
+  auditLogs        AuditLog[]
+
+  @@unique([spaceId, slug])
+}
+
+model PageContent {
+  pageId          String      @id
+  currentContent  Json
+  contentText     String      @default("")
+  updatedAt       DateTime    @updatedAt
+
+  page            Page        @relation(fields: [pageId], references: [id], onDelete: Cascade)
+}
+
+model PageVersion {
+  id              String        @id @default(cuid())
+  pageId          String
+  createdAt       DateTime      @default(now())
+  actorUserId     String?
+  reason          VersionReason
+  snapshotContent Json
+  snapshotText    String        @default("")
+  restoredFromId  String?
+
+  page            Page          @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  actor           User?         @relation("versionActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([pageId, createdAt])
+}
+
+model PageRedirect {
+  id          String      @id @default(cuid())
+  pageId       String
+  oldSlug      String
+  createdAt    DateTime   @default(now())
+
+  page         Page       @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId, oldSlug])
+}
+
+model PageRestriction {
+  id            String          @id @default(cuid())
+  pageId         String
+  type           RestrictionType
+  userId         String?
+  role           SpaceRole?
+
+  page           Page            @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId, type])
+}
+
+model PageEditorSession {
+  id            String     @id @default(cuid())
+  pageId         String
+  userId         String
+  joinedAt       DateTime   @default(now())
+  lastSeenAt     DateTime   @updatedAt
+
+  page           Page       @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([pageId, userId])
+  @@index([pageId])
+}
+
+model AuditLog {
+  id            String         @id @default(cuid())
+  at            DateTime       @default(now())
+  actorUserId   String?
+  spaceId       String?
+  pageId        String?
+  eventType     AuditEventType
+  before        Json?
+  after         Json?
+
+  actor         User?          @relation("auditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  space         Space?         @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+  page          Page?          @relation(fields: [pageId], references: [id], onDelete: SetNull)
+
+  @@index([spaceId, at])
+  @@index([pageId, at])
+}
+
+model Attachment {
+  id             String      @id @default(cuid())
+  spaceId         String
+  pageId          String?
+  uploaderUserId  String
+  filename        String
+  mimeType        String
+  size            Int
+  storageKey      String
+  createdAt       DateTime    @default(now())
+
+  space           Space       @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  page            Page?       @relation(fields: [pageId], references: [id], onDelete: SetNull)
+  uploader        User        @relation(fields: [uploaderUserId], references: [id], onDelete: Cascade)
+}
+
+model LinkIndex {
+  fromPageId      String
+  toPageId        String
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  fromPage        Page        @relation("backlink_from", fields: [fromPageId], references: [id], onDelete: Cascade)
+  toPage          Page        @relation("backlink_to", fields: [toPageId], references: [id], onDelete: Cascade)
+
+  @@id([fromPageId, toPageId])
+  @@index([toPageId])
+}

@@ -1,0 +1,55 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cnavluence
+      POSTGRES_USER: cnavluence
+      POSTGRES_PASSWORD: cnavluence
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+
+  backend:
+    image: ghcr.io/valcriss/cnavluence/backend:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://cnavluence:cnavluence@postgres:5432/cnavluence
+      APP_URL: http://frontend:8080
+      API_URL: http://backend:3000
+      JWT_ACCESS_SECRET: change_me_access
+      JWT_REFRESH_SECRET: change_me_refresh
+      ACCESS_TOKEN_TTL_MIN: 15
+      REFRESH_TOKEN_TTL_DAYS: 14
+      REFRESH_COOKIE_NAME: cnav_refresh
+      REFRESH_COOKIE_SAMESITE: lax
+      REFRESH_COOKIE_SECURE: false
+      OIDC_ENABLED: false
+      OIDC_REQUIRE_EMAIL_VERIFIED: true
+      UPLOAD_STORAGE: local
+      UPLOAD_LOCAL_PATH: /app/uploads
+      SEARCH_PAGE_SIZE: 20
+      VERSION_TIMER_MINUTES: 10
+      VERSION_RETENTION_ALL_DAYS: 30
+      VERSION_RETENTION_DAILY_DAYS: 90
+      VERSION_RETENTION_MAX_DAYS: 3650
+    volumes:
+      - backend_prod_uploads:/app/uploads
+    depends_on:
+      - postgres
+
+  frontend:
+    image: ghcr.io/valcriss/cnavluence/frontend:latest
+    restart: unless-stopped
+    environment:
+      NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx/conf.d
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_prod_data:
+  backend_prod_uploads:

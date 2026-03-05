@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: cnavluence
+          POSTGRES_USER: cnavluence
+          POSTGRES_PASSWORD: cnavluence
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cnavluence -d cnavluence"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://cnavluence:cnavluence@localhost:5432/cnavluence
+      JWT_ACCESS_SECRET: test_access_secret
+      JWT_REFRESH_SECRET: test_refresh_secret
+      PORT: 3000
+      ACCESS_TOKEN_TTL_MIN: 15
+      REFRESH_TOKEN_TTL_DAYS: 14
+      REFRESH_COOKIE_NAME: cnav_refresh
+      REFRESH_COOKIE_SAMESITE: lax
+      REFRESH_COOKIE_SECURE: false
+      OIDC_ENABLED: false
+      OIDC_REQUIRE_EMAIL_VERIFIED: true
+      UPLOAD_STORAGE: local
+      UPLOAD_LOCAL_PATH: ./uploads
+      SEARCH_PAGE_SIZE: 20
+      VERSION_TIMER_MINUTES: 10
+      VERSION_RETENTION_ALL_DAYS: 30
+      VERSION_RETENTION_DAILY_DAYS: 90
+      VERSION_RETENTION_MAX_DAYS: 3650
+      VITE_API_BASE_URL: http://localhost:3000/api
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npm --workspace backend run prisma:generate
+      - run: npm --workspace backend run prisma:migrate:deploy
+      - run: npm run lint
+      - run: npm run test
