@@ -28,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import axios from 'axios';
 import { useAuthStore } from '../stores/auth';
@@ -41,6 +41,11 @@ const password = ref('admin1234');
 const errorMessage = ref('');
 const loadingLocal = ref(false);
 const loadingOidc = ref(false);
+
+const shouldSkipTransparentLogin = () => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('sso') === '1';
+};
 
 const submit = async () => {
   errorMessage.value = '';
@@ -77,6 +82,23 @@ const loginWithOidc = async () => {
     loadingOidc.value = false;
   }
 };
+
+onMounted(async () => {
+  if (shouldSkipTransparentLogin()) {
+    return;
+  }
+
+  try {
+    const response = await api.get('/auth/config');
+    const authProvider = String(response.data?.authProvider ?? 'local').toLowerCase();
+    const transparentLogin = Boolean(response.data?.oidcTransparentLogin);
+    if (authProvider === 'oidc' && transparentLogin) {
+      await loginWithOidc();
+    }
+  } catch (_error) {
+    return;
+  }
+});
 </script>
 
 <style scoped>

@@ -23,7 +23,9 @@ vi.mock('../../src/lib/prisma.js', () => ({
 vi.mock('../../src/config/env.js', () => ({
   env: {
     APP_URL: 'http://localhost:5173',
+    AUTH_PROVIDER: 'oidc',
     OIDC_ENABLED: true,
+    OIDC_TRANSPARENT_LOGIN: true,
     OIDC_CLIENT_ID: 'client',
     OIDC_CLIENT_SECRET: 'secret',
     OIDC_REDIRECT_URI: 'http://localhost:3000/api/auth/oidc/callback',
@@ -31,6 +33,8 @@ vi.mock('../../src/config/env.js', () => ({
     OIDC_AUTHORIZATION_ENDPOINT: 'https://issuer.example/authorize',
     OIDC_TOKEN_ENDPOINT: 'https://issuer.example/token',
     OIDC_USERINFO_ENDPOINT: 'https://issuer.example/userinfo',
+    OIDC_CA_CERT_PATH: undefined,
+    OIDC_TLS_INSECURE: false,
     OIDC_REQUIRE_EMAIL_VERIFIED: true,
     REFRESH_COOKIE_NAME: 'cnav_refresh',
     REFRESH_COOKIE_SECURE: false,
@@ -73,6 +77,24 @@ describe('auth oidc flow', () => {
     });
 
     expect(response.status).toBe(400);
+  });
+
+  it('returns auth provider config for login UX', async () => {
+    const { authRouter } = await import('../../src/modules/auth/auth.routes.js');
+    const app = express();
+    app.use(express.json());
+    app.use(cookieParser());
+    app.use('/api/auth', authRouter);
+    app.use(errorMiddleware);
+
+    const response = await request(app).get('/api/auth/config');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      authProvider: 'oidc',
+      oidcTransparentLogin: true,
+      oidcEnabled: true,
+    });
   });
 
   it('accepts same-origin absolute returnTo and normalizes cookie path', async () => {

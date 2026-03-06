@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import http from 'node:http';
+import https from 'node:https';
 import createHttpError from 'http-errors';
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma.js';
@@ -56,7 +59,92 @@ const oidcUserinfoSchema = z.object({
   preferred_username: z.string().optional(),
 });
 
+type OidcRequestOptions = {
+  method?: 'GET' | 'POST';
+  headers?: Record<string, string>;
+  body?: string;
+};
+
 export const authRouter = Router();
+
+let cachedOidcCa: { path: string; value: Buffer } | null = null;
+
+function getOidcCaCertificate(): Buffer | undefined {
+  const certPath = env.OIDC_CA_CERT_PATH?.trim();
+  if (!certPath) {
+    return undefined;
+  }
+
+  if (cachedOidcCa?.path === certPath) {
+    return cachedOidcCa.value;
+  }
+
+  try {
+    const certificate = fs.readFileSync(certPath);
+    cachedOidcCa = { path: certPath, value: certificate };
+    return certificate;
+  } catch {
+    throw createHttpError(500, 'OIDC CA certificate path is invalid');
+  }
+}
+
+async function oidcRequestJson(url: string, options: OidcRequestOptions = {}) {
+  const target = new URL(url);
+  const isHttps = target.protocol === 'https:';
+  const transport = isHttps ? https : http;
+  const tlsOptions =
+    isHttps
+      ? {
+          ca: getOidcCaCertificate(),
+          rejectUnauthorized: !env.OIDC_TLS_INSECURE,
+        }
+      : {};
+
+  const response = await new Promise<{ statusCode: number; body: string }>((resolve, reject) => {
+    const request = transport.request(
+      target,
+      {
+        method: options.method ?? 'GET',
+        headers: options.headers,
+        ...tlsOptions,
+      },
+      (result) => {
+        const chunks: string[] = [];
+        result.setEncoding('utf8');
+        result.on('data', (chunk) => chunks.push(chunk));
+        result.on('end', () => {
+          resolve({
+            statusCode: result.statusCode ?? 500,
+            body: chunks.join(''),
+          });
+        });
+      },
+    );
+
+    request.on('error', reject);
+    if (options.body) {
+      request.write(options.body);
+    }
+    request.end();
+  }).catch(() => {
+    throw createHttpError(502, 'OIDC upstream request failed');
+  });
+
+  let data: unknown = null;
+  if (response.body.trim()) {
+    try {
+      data = JSON.parse(response.body);
+    } catch {
+      throw createHttpError(502, 'OIDC upstream returned invalid JSON');
+    }
+  }
+
+  return {
+    ok: response.statusCode >= 200 && response.statusCode < 300,
+    status: response.statusCode,
+    data,
+  };
+}
 
 function normalizeReturnTo(input: string): string | null {
   const trimmed = input.trim();
@@ -188,18 +276,26 @@ async function resolveOidcEndpoints() {
 
   const issuer = env.OIDC_ISSUER.replace(/\/$/, '');
   const discoveryUrl = `${issuer}/.well-known/openid-configuration`;
-  const discoveryResponse = await fetch(discoveryUrl);
+  const discoveryResponse = await oidcRequestJson(discoveryUrl);
   if (!discoveryResponse.ok) {
     throw createHttpError(502, 'Unable to resolve OIDC discovery document');
   }
 
-  const discovery = oidcDiscoverySchema.parse(await discoveryResponse.json());
+  const discovery = oidcDiscoverySchema.parse(discoveryResponse.data);
   return {
     authorizationEndpoint: discovery.authorization_endpoint,
     tokenEndpoint: discovery.token_endpoint,
     userinfoEndpoint: discovery.userinfo_endpoint,
   };
 }
+
+authRouter.get('/config', (_req, res) => {
+  res.json({
+    authProvider: env.AUTH_PROVIDER,
+    oidcTransparentLogin: env.OIDC_TRANSPARENT_LOGIN,
+    oidcEnabled: env.OIDC_ENABLED,
+  });
+});
 
 authRouter.post('/register', async (req, res) => {
   const payload = registerSchema.parse(req.body);
@@ -318,7 +414,7 @@ authRouter.get('/oidc/callback', async (req, res) => {
 
   const { tokenEndpoint, userinfoEndpoint } = await resolveOidcEndpoints();
 
-  const tokenResponse = await fetch(tokenEndpoint, {
+  const tokenResponse = await oidcRequestJson(tokenEndpoint, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -327,16 +423,16 @@ authRouter.get('/oidc/callback', async (req, res) => {
       redirect_uri: env.OIDC_REDIRECT_URI,
       client_id: env.OIDC_CLIENT_ID,
       client_secret: env.OIDC_CLIENT_SECRET,
-    }),
+    }).toString(),
   });
 
   if (!tokenResponse.ok) {
     throw createHttpError(401, 'OIDC token exchange failed');
   }
 
-  const token = oidcTokenSchema.parse(await tokenResponse.json());
+  const token = oidcTokenSchema.parse(tokenResponse.data);
 
-  const userinfoResponse = await fetch(userinfoEndpoint, {
+  const userinfoResponse = await oidcRequestJson(userinfoEndpoint, {
     headers: {
       authorization: `Bearer ${token.access_token}`,
     },
@@ -346,7 +442,7 @@ authRouter.get('/oidc/callback', async (req, res) => {
     throw createHttpError(401, 'OIDC userinfo lookup failed');
   }
 
-  const userinfo = oidcUserinfoSchema.parse(await userinfoResponse.json());
+  const userinfo = oidcUserinfoSchema.parse(userinfoResponse.data);
 
   if (env.OIDC_REQUIRE_EMAIL_VERIFIED && userinfo.email_verified === false) {
     throw createHttpError(403, 'OIDC email is not verified');

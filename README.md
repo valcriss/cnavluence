@@ -21,6 +21,13 @@ Plateforme collaborative type Confluence (Vue 3 + Node.js/TypeScript + PostgreSQ
 - Backend: `npm --workspace backend run test`
 - Frontend: `npm --workspace frontend run test`
 
+## Configuration OIDC
+
+- `AUTH_PROVIDER=local|oidc` (defaut: `local`)
+- `OIDC_TRANSPARENT_LOGIN=true|false` (defaut: `true`) : si `AUTH_PROVIDER=oidc`, la page `/login` lance automatiquement le SSO
+- `OIDC_CA_CERT_PATH=/chemin/ca.pem` : certificat (ou bundle CA) de confiance pour les appels OIDC sortants
+- `OIDC_TLS_INSECURE=true|false` (defaut: `false`) : desactive la verification TLS pour les appels OIDC sortants (debug uniquement)
+
 ## Build Docker (reseau entreprise)
 
 Si votre proxy TLS injecte un certificat interne, le build Docker peut echouer avec `SELF_SIGNED_CERT_IN_CHAIN`.

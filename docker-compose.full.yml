@@ -26,7 +26,11 @@ services:
       REFRESH_COOKIE_NAME: cnav_refresh
       REFRESH_COOKIE_SAMESITE: lax
       REFRESH_COOKIE_SECURE: false
+      AUTH_PROVIDER: local
       OIDC_ENABLED: false
+      OIDC_TRANSPARENT_LOGIN: true
+      OIDC_CA_CERT_PATH: ""
+      OIDC_TLS_INSECURE: false
       OIDC_REQUIRE_EMAIL_VERIFIED: true
       UPLOAD_STORAGE: local
       UPLOAD_LOCAL_PATH: /app/uploads
