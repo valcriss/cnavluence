@@ -116,11 +116,11 @@
         <section class="sidebar-panel toc-panel">
           <h2>Sommaire</h2>
           <ul v-if="tocItems.length" class="toc-list">
-            <li v-for="item in tocItems" :key="`toc-${item.index}`" :style="{ paddingLeft: `${item.level === 3 ? 12 : 0}px` }">
+            <li v-for="item in tocItems" :key="`toc-${item.index}`" :style="{ paddingLeft: `${Math.max(0, item.level - 1) * 12}px` }">
               <button type="button" class="toc-link" @click="scrollToHeading(item.index)">{{ item.text }}</button>
             </li>
           </ul>
-          <p v-else class="sidebar-empty">Ajoutez des titres H2/H3 pour creer un sommaire.</p>
+          <p v-else class="sidebar-empty">Ajoutez des titres H1-H4 pour creer un sommaire.</p>
         </section>
       </aside>
       <div class="document-main">
@@ -128,10 +128,12 @@
           :key="`${pageId}-${editing ? 'edit' : 'read'}`"
           :model-value="pagesStore.content"
           :editable="editing"
+          :space-key="currentSpaceKey"
+          :space-id="pagesStore.currentPage.spaceId"
+          :page-id="pagesStore.currentPage.id"
           :ydoc="editing ? ydoc : null"
           :awareness="editing ? awareness : null"
           :collab-user="editing ? collabUser : null"
-          @save="save"
           @open-history="openHistory"
           @live-update="onLiveUpdate"
         />
@@ -364,6 +366,10 @@ const starredPageIds = ref<string[]>([]);
 const nowTick = ref(Date.now());
 const relativeTimeFormatter = new Intl.RelativeTimeFormat('fr', { numeric: 'auto' });
 let relativeClockInterval: ReturnType<typeof window.setInterval> | null = null;
+let autosaveInterval: ReturnType<typeof window.setInterval> | null = null;
+let contentSaveChain: Promise<void> = Promise.resolve();
+const AUTO_SAVE_INTERVAL_MS = 10_000;
+const lastSavedContentSignature = ref('');
 
 const pageId = computed(() => String(route.params.pageIdSlug).split('-')[0]);
 const currentSpaceKey = computed(() => String(routeParams.spaceKey ?? route.params.spaceKey ?? ''));
@@ -416,7 +422,7 @@ const tocItems = computed<TocItem[]>(() => {
     const attrs =
       nodeRecord.attrs && typeof nodeRecord.attrs === 'object' ? (nodeRecord.attrs as Record<string, unknown>) : null;
     const level = typeof attrs?.level === 'number' ? attrs.level : null;
-    if (type === 'heading' && (level === 2 || level === 3)) {
+    if (type === 'heading' && (level === 1 || level === 2 || level === 3 || level === 4)) {
       const text = extractText(node).trim();
       headings.push({
         index: headings.length,
@@ -456,6 +462,66 @@ const clearCollabState = () => {
 const clearActions = () => {
   actionError.value = '';
   actionFeedback.value = '';
+};
+
+const computeContentSignature = (content: unknown): string => {
+  try {
+    return JSON.stringify(content ?? null);
+  } catch {
+    return '';
+  }
+};
+
+const queueContentSave = (
+  targetPageId: string,
+  content: unknown,
+  options: { clearMessages?: boolean; setFeedback?: string } = {},
+): Promise<void> => {
+  contentSaveChain = contentSaveChain.then(async () => {
+    const nextSignature = computeContentSignature(content);
+    if (!nextSignature || nextSignature === lastSavedContentSignature.value) {
+      return;
+    }
+
+    if (options.clearMessages) {
+      clearActions();
+    }
+
+    await pagesStore.saveContent(targetPageId, content);
+    lastSavedContentSignature.value = nextSignature;
+
+    if (options.setFeedback) {
+      actionFeedback.value = options.setFeedback;
+    }
+  });
+
+  return contentSaveChain;
+};
+
+const stopAutosave = () => {
+  if (!autosaveInterval) {
+    return;
+  }
+  window.clearInterval(autosaveInterval);
+  autosaveInterval = null;
+};
+
+const startAutosave = () => {
+  stopAutosave();
+  autosaveInterval = window.setInterval(() => {
+    if (!editing.value) {
+      return;
+    }
+
+    const contentToSave = latestSnapshotContent.value ?? pagesStore.content;
+    void queueContentSave(pageId.value, contentToSave).catch((error: unknown) => {
+      if (axios.isAxiosError(error)) {
+        actionError.value = String(error.response?.data?.message ?? error.response?.data?.error ?? 'Echec de sauvegarde automatique');
+      } else {
+        actionError.value = 'Echec de sauvegarde automatique';
+      }
+    });
+  }, AUTO_SAVE_INTERVAL_MS);
 };
 
 const handleOutsideMenuClick = (event: MouseEvent) => {
@@ -726,12 +792,14 @@ const loadPage = async () => {
     breadcrumbs.value = breadcrumbsResponse.data.breadcrumbs ?? [];
     latestSnapshotContent.value = pagesStore.content;
     latestSnapshotText.value = '';
+    lastSavedContentSignature.value = computeContentSignature(pagesStore.content);
     draftTitle.value = pagesStore.currentPage?.title ?? '';
     if (route.query.edit === '1' && !editing.value) {
       await api.post('/content/session/enter', { pageId: pageId.value });
       initYDoc(pageId.value);
       editing.value = true;
       attachCollabListeners(pageId.value);
+      startAutosave();
     }
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -753,7 +821,10 @@ onMounted(async () => {
 
 watch(pageId, async (nextPageId, previousPageId) => {
   if (editing.value) {
+    stopAutosave();
     if (previousPageId) {
+      const contentToSave = latestSnapshotContent.value ?? pagesStore.content;
+      await queueContentSave(previousPageId, contentToSave).catch(() => undefined);
       await api.post('/content/session/leave', { pageId: previousPageId }).catch(() => undefined);
       leavePageRoom(previousPageId);
     }
@@ -786,7 +857,20 @@ const toggleEdit = async () => {
     initYDoc(pageId.value);
     editing.value = true;
     attachCollabListeners(pageId.value);
+    startAutosave();
   } else {
+    stopAutosave();
+    const contentToSave = latestSnapshotContent.value ?? pagesStore.content;
+    await queueContentSave(pageId.value, contentToSave, {
+      clearMessages: true,
+      setFeedback: 'Modifications enregistrees',
+    }).catch((error: unknown) => {
+      if (axios.isAxiosError(error)) {
+        actionError.value = String(error.response?.data?.message ?? error.response?.data?.error ?? 'Impossible d enregistrer avant de quitter l edition');
+      } else {
+        actionError.value = 'Impossible d enregistrer avant de quitter l edition';
+      }
+    });
     editing.value = false;
     awareness.value?.setLocalState(null);
     await api.post('/content/session/leave', { pageId: pageId.value });
@@ -809,11 +893,6 @@ const onLiveUpdate = (payload: { content: unknown; text: string; selection: { fr
     pageId: pageId.value,
     selection: payload.selection,
   });
-};
-
-const save = async (content: unknown) => {
-  clearActions();
-  await pagesStore.saveContent(pageId.value, content);
 };
 
 const saveTitleOnBlur = async () => {
@@ -1112,7 +1191,7 @@ const confirmDeleteDocument = async () => {
 };
 
 const scrollToHeading = (tocIndex: number) => {
-  const headings = Array.from(document.querySelectorAll('.tiptap.ProseMirror h2, .tiptap.ProseMirror h3'));
+  const headings = Array.from(document.querySelectorAll('.tiptap.ProseMirror h1, .tiptap.ProseMirror h2, .tiptap.ProseMirror h3, .tiptap.ProseMirror h4'));
   const target = headings[tocIndex] as HTMLElement | undefined;
   if (!target) {
     return;
@@ -1166,6 +1245,7 @@ const toggleArchive = async () => {
 
 onBeforeUnmount(async () => {
   document.removeEventListener('click', handleOutsideMenuClick);
+  stopAutosave();
 
   if (relativeClockInterval) {
     window.clearInterval(relativeClockInterval);
@@ -1176,6 +1256,8 @@ onBeforeUnmount(async () => {
     return;
   }
 
+  const contentToSave = latestSnapshotContent.value ?? pagesStore.content;
+  await queueContentSave(pageId.value, contentToSave).catch(() => undefined);
   awareness.value?.setLocalState(null);
   await api.post('/content/session/leave', { pageId: pageId.value }).catch(() => undefined);
   leavePageRoom(pageId.value);
@@ -1579,7 +1661,7 @@ onBeforeUnmount(async () => {
 }
 
 .document-layout.writing .document-main {
-  max-width: 790px;
+  max-width: none;
 }
 
 .contents-rail {

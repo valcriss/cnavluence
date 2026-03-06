@@ -1,5 +1,6 @@
 import express from 'express';
 import 'express-async-errors';
+import { Readable } from 'node:stream';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorMiddleware } from '../../src/lib/error-middleware.js';
@@ -40,6 +41,10 @@ vi.mock('../../src/lib/prisma.js', () => ({
 
 vi.mock('../../src/modules/auth/auth-middleware.js', () => ({
   requireAuth: (req: express.Request, _res: express.Response, next: express.NextFunction) => {
+    req.auth = { userId: 'user_1', email: 'user1@example.test' };
+    next();
+  },
+  requireAuthOrRefreshCookie: (req: express.Request, _res: express.Response, next: express.NextFunction) => {
     req.auth = { userId: 'user_1', email: 'user1@example.test' };
     next();
   },
@@ -144,5 +149,102 @@ describe('attachments routes', () => {
     expect(mockedStorage.saveLocalFile).toHaveBeenCalled();
     expect(mockedPrisma.attachment.create).toHaveBeenCalled();
     expect(mockedAudit.createAuditLog).toHaveBeenCalled();
+  });
+
+  it('rejects image upload for unsupported mime type', async () => {
+    const { attachmentsRouter } = await import('../../src/modules/attachments/attachments.routes.js');
+    const app = express();
+    app.use('/api/attachments', attachmentsRouter);
+    app.use(errorMiddleware);
+
+    const response = await request(app)
+      .post('/api/attachments/upload-image')
+      .field('spaceId', SPACE_ID)
+      .field('pageId', PAGE_ID)
+      .attach('file', Buffer.from('hello world', 'utf8'), {
+        filename: 'not-image.txt',
+        contentType: 'text/plain',
+      });
+
+    expect(response.status).toBe(400);
+    expect(mockedPrisma.attachment.create).not.toHaveBeenCalled();
+  });
+
+  it('creates image attachment and returns inline url', async () => {
+    mockedPrisma.attachment.create.mockResolvedValue({
+      id: ATTACHMENT_ID,
+      spaceId: SPACE_ID,
+      pageId: PAGE_ID,
+      filename: 'pixel.png',
+      mimeType: 'image/png',
+      size: 8,
+      storageKey: 'storage/key.png',
+    });
+
+    const { attachmentsRouter } = await import('../../src/modules/attachments/attachments.routes.js');
+    const app = express();
+    app.use('/api/attachments', attachmentsRouter);
+    app.use(errorMiddleware);
+
+    const response = await request(app)
+      .post('/api/attachments/upload-image')
+      .field('spaceId', SPACE_ID)
+      .field('pageId', PAGE_ID)
+      .attach('file', Buffer.from([0x89, 0x50, 0x4e, 0x47]), {
+        filename: 'pixel.png',
+        contentType: 'image/png',
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body.inlineUrl).toBe(`/api/attachments/${ATTACHMENT_ID}/inline`);
+    expect(mockedPrisma.attachment.create).toHaveBeenCalled();
+  });
+
+  it('rejects inline route for non-image attachment', async () => {
+    mockedPrisma.attachment.findUnique.mockResolvedValue({
+      id: ATTACHMENT_ID,
+      spaceId: SPACE_ID,
+      pageId: PAGE_ID,
+      filename: 'sample.txt',
+      mimeType: 'text/plain',
+      size: 11,
+      storageKey: 'storage/key.txt',
+    });
+
+    const { attachmentsRouter } = await import('../../src/modules/attachments/attachments.routes.js');
+    const app = express();
+    app.use('/api/attachments', attachmentsRouter);
+    app.use(errorMiddleware);
+
+    const response = await request(app).get(`/api/attachments/${ATTACHMENT_ID}/inline`);
+
+    expect(response.status).toBe(415);
+    expect(mockedStorage.getLocalFileStream).not.toHaveBeenCalled();
+  });
+
+  it('serves image inline when access is allowed', async () => {
+    mockedPrisma.attachment.findUnique.mockResolvedValue({
+      id: ATTACHMENT_ID,
+      spaceId: SPACE_ID,
+      pageId: PAGE_ID,
+      filename: 'pixel.png',
+      mimeType: 'image/png',
+      size: 8,
+      storageKey: 'storage/key.png',
+    });
+    mockedStorage.getLocalFileStream.mockReturnValue(Readable.from(Buffer.from([0x89, 0x50])));
+
+    const { attachmentsRouter } = await import('../../src/modules/attachments/attachments.routes.js');
+    const app = express();
+    app.use('/api/attachments', attachmentsRouter);
+    app.use(errorMiddleware);
+
+    const response = await request(app).get(`/api/attachments/${ATTACHMENT_ID}/inline`);
+
+    expect(response.status).toBe(200);
+    expect(response.header['content-disposition']).toContain('inline');
+    expect(response.header['content-type']).toContain('image/png');
+    expect(response.header['cross-origin-resource-policy']).toBe('cross-origin');
+    expect(mockedStorage.getLocalFileStream).toHaveBeenCalledWith('storage/key.png');
   });
 });

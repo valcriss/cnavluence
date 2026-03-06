@@ -508,6 +508,9 @@ authRouter.post('/refresh', async (req, res) => {
     throw createHttpError(401, 'User not found');
   }
 
+  // Reconcile personal collection for users who come back with an existing refresh cookie.
+  await ensurePersonalSpaceForUser(user.id);
+
   const accessToken = signAccessToken({ sub: user.id, email: user.email });
   const refreshToken = signRefreshToken({ sub: user.id, tokenVersion: payload.tokenVersion + 1 });
   setRefreshCookie(res, refreshToken);

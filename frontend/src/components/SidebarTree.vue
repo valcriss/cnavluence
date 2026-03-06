@@ -29,7 +29,13 @@
     <section class="section collections">
       <header class="section-head">
         <p>Collections</p>
-        <button :disabled="!selectedSpaceId || !canCreatePage" type="button" class="add-doc" @click="createPage">
+        <button
+          :disabled="!selectedSpaceId || !canCreatePage"
+          type="button"
+          class="add-doc"
+          title="Ajouter un document"
+          @click="createPage"
+        >
           <i class="fa-solid fa-plus" aria-hidden="true"></i>
         </button>
       </header>
@@ -508,8 +514,22 @@ const goToSettingsInvite = async () => {
 }
 
 .add-doc {
-  padding: 0.2rem 0.4rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0.75rem;
+  line-height: 1;
+}
+
+.add-doc .fa-solid,
+.add-doc .fa-regular {
+  margin-right: 0;
+  line-height: 1;
 }
 
 .space-list {

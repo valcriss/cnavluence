@@ -50,6 +50,12 @@ vi.mock('../../src/modules/auth/tokens.js', () => ({
   }),
 }));
 
+const mockedEnsurePersonalSpaceForUser = vi.fn(async () => undefined);
+
+vi.mock('../../src/modules/spaces/personal-space.service.js', () => ({
+  ensurePersonalSpaceForUser: mockedEnsurePersonalSpaceForUser,
+}));
+
 describe('auth csrf protections', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -59,6 +65,7 @@ describe('auth csrf protections', () => {
       displayName: 'User One',
       siteRole: 'SITE_USER',
     });
+    mockedEnsurePersonalSpaceForUser.mockResolvedValue(undefined);
   });
 
   it('rejects refresh without origin/referer headers', async () => {
@@ -105,6 +112,7 @@ describe('auth csrf protections', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.accessToken).toBe('access.token');
+    expect(mockedEnsurePersonalSpaceForUser).toHaveBeenCalledWith('user_1');
   });
 
   it('rejects logout with invalid referer', async () => {
