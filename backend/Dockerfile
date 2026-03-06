@@ -20,5 +20,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/backend/prisma ./backend/prisma
 COPY --from=builder /app/backend/package.json ./backend/package.json
+COPY --from=builder /app/backend/entrypoint.sh ./backend/entrypoint.sh
 WORKDIR /app/backend
-CMD ["node", "dist/server.js"]
+RUN chmod +x ./entrypoint.sh
+ENTRYPOINT ["./entrypoint.sh"]
