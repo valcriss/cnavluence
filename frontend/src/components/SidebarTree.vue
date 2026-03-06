@@ -29,7 +29,7 @@
     <section class="section collections">
       <header class="section-head">
         <p>Collections</p>
-        <button :disabled="!selectedSpaceId" type="button" class="add-doc" @click="createPage">
+        <button :disabled="!selectedSpaceId || !canCreatePage" type="button" class="add-doc" @click="createPage">
           <i class="fa-solid fa-plus" aria-hidden="true"></i>
         </button>
       </header>
@@ -129,6 +129,10 @@ const pagesStore = usePagesStore();
 
 const spaces = computed(() => spacesStore.spaces);
 const selectedSpaceId = computed(() => spacesStore.selectedSpaceId);
+const selectedSpace = computed(() => spaces.value.find((space) => space.id === selectedSpaceId.value) ?? null);
+const canCreatePage = computed(
+  () => selectedSpace.value?.role === 'SPACE_ADMIN' || selectedSpace.value?.role === 'SPACE_EDITOR',
+);
 const isSiteAdmin = computed(() => authStore.user?.siteRole === 'SITE_ADMIN');
 const settingsEntryPath = computed(() => (isSiteAdmin.value ? '/settings' : '/search'));
 const createError = ref('');
@@ -366,6 +370,11 @@ const createPage = async () => {
     return;
   }
 
+  if (!canCreatePage.value) {
+    createError.value = 'Vous n avez pas les droits pour creer une page dans cette collection';
+    return;
+  }
+
   createError.value = '';
   moveError.value = '';
   try {
@@ -375,8 +384,12 @@ const createPage = async () => {
     const space = spaces.value.find((item) => item.id === selectedSpaceId.value);
     const key = space?.key ?? 'space';
     await router.push(`/space/${key}/pages/${page.id}-${page.slug}?edit=1`);
-  } catch {
-    createError.value = 'Impossible de creer la page';
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      createError.value = String(error.response?.data?.message ?? error.response?.data?.error ?? 'Impossible de creer la page');
+    } else {
+      createError.value = 'Impossible de creer la page';
+    }
   }
 };
 

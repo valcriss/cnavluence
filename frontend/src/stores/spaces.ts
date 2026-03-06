@@ -12,7 +12,14 @@ export const useSpacesStore = defineStore('spaces', {
       const response = await api.get('/spaces');
       this.spaces = response.data.spaces;
       if (!this.selectedSpaceId && this.spaces.length) {
-        this.selectedSpaceId = this.spaces[0].id;
+        const personal = this.spaces.find((space) => space.isPersonal);
+        if (personal) {
+          this.selectedSpaceId = personal.id;
+          return;
+        }
+
+        const editable = this.spaces.find((space) => space.role === 'SPACE_ADMIN' || space.role === 'SPACE_EDITOR');
+        this.selectedSpaceId = editable?.id ?? this.spaces[0].id;
       }
     },
     selectSpace(spaceId: string) {
