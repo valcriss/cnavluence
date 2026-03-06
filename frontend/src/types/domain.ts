@@ -9,7 +9,40 @@ export type Space = {
   id: string;
   key: string;
   name: string;
+  description?: string;
+  archivedAt?: string | null;
+  isPersonal?: boolean;
+  tag?: string | null;
   role: 'SPACE_ADMIN' | 'SPACE_EDITOR' | 'SPACE_VIEWER';
+};
+
+export type CollectionOwner = {
+  id: string;
+  email: string;
+  displayName: string;
+};
+
+export type AdminCollection = {
+  id: string;
+  key: string;
+  name: string;
+  description: string;
+  archivedAt: string | null;
+  isPersonal: boolean;
+  tag: string | null;
+  personalOwnerUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  pageCount: number;
+  owners: CollectionOwner[];
+};
+
+export type SettingsUser = {
+  id: string;
+  email: string;
+  displayName: string;
+  siteRole: 'SITE_ADMIN' | 'SITE_USER';
+  createdAt: string;
 };
 
 export type Page = {
@@ -71,8 +104,8 @@ export type AuditLogEntry = {
   spaceId: string | null;
   pageId: string | null;
   eventType: string;
-  before: unknown | null;
-  after: unknown | null;
+  before: unknown;
+  after: unknown;
   actor?: AuditActor | null;
   page?: AuditPageRef | null;
   space?: AuditSpaceRef | null;

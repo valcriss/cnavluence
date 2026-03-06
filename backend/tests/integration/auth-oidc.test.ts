@@ -59,6 +59,10 @@ vi.mock('../../src/modules/auth/tokens.js', () => ({
   }),
 }));
 
+vi.mock('../../src/modules/spaces/personal-space.service.js', () => ({
+  ensurePersonalSpaceForUser: vi.fn(async () => undefined),
+}));
+
 describe('auth oidc flow', () => {
   beforeEach(() => {
     vi.clearAllMocks();

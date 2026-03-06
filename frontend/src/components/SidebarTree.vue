@@ -1,6 +1,6 @@
 <template>
   <aside class="sidebar">
-    <RouterLink to="/settings" class="profile-link">
+    <RouterLink :to="settingsEntryPath" class="profile-link">
       <span class="avatar">{{ workspaceInitial }}</span>
       <span class="profile-meta">
         <strong>{{ workspaceName }}</strong>
@@ -101,10 +101,10 @@
       <RouterLink :to="{ path: '/search', query: { view: 'trash' } }" class="nav-item" :class="{ active: isSearchViewActive('trash') }">
         <i class="fa-regular fa-trash-can" aria-hidden="true"></i>Corbeille
       </RouterLink>
-      <RouterLink to="/settings" class="nav-item" :class="{ active: route.path === '/settings' }">
+      <RouterLink v-if="isSiteAdmin" to="/settings" class="nav-item" :class="{ active: route.path === '/settings' }">
         <i class="fa-solid fa-gear" aria-hidden="true"></i>Parametres
       </RouterLink>
-      <button type="button" class="nav-item invite-btn" @click="goToSettingsInvite">
+      <button v-if="isSiteAdmin" type="button" class="nav-item invite-btn" @click="goToSettingsInvite">
         <i class="fa-solid fa-plus" aria-hidden="true"></i>Inviter des personnes...
       </button>
     </nav>
@@ -129,6 +129,8 @@ const pagesStore = usePagesStore();
 
 const spaces = computed(() => spacesStore.spaces);
 const selectedSpaceId = computed(() => spacesStore.selectedSpaceId);
+const isSiteAdmin = computed(() => authStore.user?.siteRole === 'SITE_ADMIN');
+const settingsEntryPath = computed(() => (isSiteAdmin.value ? '/settings' : '/search'));
 const createError = ref('');
 const moveError = ref('');
 const dragPageId = ref<string | null>(null);

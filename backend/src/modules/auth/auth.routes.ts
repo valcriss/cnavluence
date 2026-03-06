@@ -10,6 +10,7 @@ import { prisma } from '../../lib/prisma.js';
 import { clearRefreshCookie, setRefreshCookie, signAccessToken, signRefreshToken, verifyRefreshToken } from './tokens.js';
 import { env } from '../../config/env.js';
 import { requireAuth } from './auth-middleware.js';
+import { ensurePersonalSpaceForUser } from '../spaces/personal-space.service.js';
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -322,6 +323,7 @@ authRouter.post('/register', async (req, res) => {
     },
   });
 
+  await ensurePersonalSpaceForUser(user.id);
   const session = issueSession(res, user);
   res.status(201).json(session);
 });
@@ -343,6 +345,7 @@ authRouter.post('/login', async (req, res) => {
     throw createHttpError(401, 'Invalid credentials');
   }
 
+  await ensurePersonalSpaceForUser(user.id);
   const session = issueSession(res, user);
   res.json(session);
 });
@@ -454,6 +457,7 @@ authRouter.get('/oidc/callback', async (req, res) => {
     subject: userinfo.sub,
   });
 
+  await ensurePersonalSpaceForUser(user.id);
   const session = issueSession(res, user);
   const returnToCookie = req.cookies[oidcReturnToCookieName] as string | undefined;
   res.clearCookie(oidcReturnToCookieName, { path: '/api/auth/oidc' });
@@ -485,6 +489,7 @@ authRouter.post('/oidc/callback', async (req, res) => {
     displayName: payload.displayName,
     subject: payload.subject,
   });
+  await ensurePersonalSpaceForUser(user.id);
   const session = issueSession(res, user);
   res.json(session);
 });

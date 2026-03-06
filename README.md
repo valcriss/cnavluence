@@ -28,6 +28,12 @@ Plateforme collaborative type Confluence (Vue 3 + Node.js/TypeScript + PostgreSQ
 - `OIDC_CA_CERT_PATH=/chemin/ca.pem` : certificat (ou bundle CA) de confiance pour les appels OIDC sortants
 - `OIDC_TLS_INSECURE=true|false` (defaut: `false`) : desactive la verification TLS pour les appels OIDC sortants (debug uniquement)
 
+## Administration site
+
+- Promouvoir un compte existant en `SITE_ADMIN` par email: `npm --workspace backend run grant:site-admin -- user@example.com`
+- Dans un conteneur `backend` ou `full`, la commande est identique depuis le repertoire `backend`:
+	- `npm run grant:site-admin -- user@example.com`
+
 ## Build Docker (reseau entreprise)
 
 Si votre proxy TLS injecte un certificat interne, le build Docker peut echouer avec `SELF_SIGNED_CERT_IN_CHAIN`.

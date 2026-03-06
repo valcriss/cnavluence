@@ -14,7 +14,8 @@
     "prisma:generate": "npm run prisma:sync-env && prisma generate",
     "prisma:migrate": "npm run prisma:sync-env && prisma migrate dev",
     "prisma:migrate:deploy": "npm run prisma:sync-env && prisma migrate deploy",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "grant:site-admin": "tsx src/scripts/grant-site-admin.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",

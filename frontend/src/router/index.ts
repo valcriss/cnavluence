@@ -45,7 +45,7 @@ router.beforeEach(async (to) => {
   }
 
   if (authStore.user && authStore.accessToken) {
-    if (to.path.startsWith('/admin') && authStore.user.siteRole !== 'SITE_ADMIN') {
+    if ((to.path.startsWith('/admin') || to.path.startsWith('/settings')) && authStore.user.siteRole !== 'SITE_ADMIN') {
       return '/search';
     }
     return true;
@@ -53,7 +53,7 @@ router.beforeEach(async (to) => {
 
   const restored = await authStore.refreshSession();
   if (restored) {
-    if (to.path.startsWith('/admin') && authStore.user?.siteRole !== 'SITE_ADMIN') {
+    if ((to.path.startsWith('/admin') || to.path.startsWith('/settings')) && authStore.user?.siteRole !== 'SITE_ADMIN') {
       return '/search';
     }
     return true;

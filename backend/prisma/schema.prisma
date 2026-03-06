@@ -68,6 +68,7 @@ model User {
   auditLogs      AuditLog[]       @relation("auditActor")
   attachments    Attachment[]
   pageEdits      PageEditorSession[]
+  personalSpace  Space?           @relation("personal_space_owner")
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 }
@@ -88,12 +89,20 @@ model Space {
   id            String           @id @default(cuid())
   key           String           @unique
   name          String
+  description   String           @default("")
+  archivedAt    DateTime?
+  isPersonal    Boolean          @default(false)
+  personalOwnerUserId String?    @unique
   memberships   SpaceMembership[]
   pages         Page[]
   attachments   Attachment[]
   auditLogs     AuditLog[]
+  personalOwner User?            @relation("personal_space_owner", fields: [personalOwnerUserId], references: [id], onDelete: Cascade)
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
+
+  @@index([archivedAt])
+  @@index([isPersonal])
 }
 
 model SpaceMembership {
