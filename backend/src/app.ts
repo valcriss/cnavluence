@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import pinoHttp from 'pino-http';
+import createHttpError from 'http-errors';
 import path from 'node:path';
 import fs from 'node:fs';
 import { env } from './config/env.js';
@@ -23,11 +24,18 @@ import { collabMetrics } from './modules/collab/collab.server.js';
 export function createApp() {
   const app = express();
   const staticDir = path.resolve(process.cwd(), 'public');
+  const appOrigin = new URL(env.APP_URL).origin;
 
   app.use(helmet());
   app.use(
     cors({
-      origin: env.APP_URL,
+      origin(origin, callback) {
+        if (!origin || origin === appOrigin) {
+          callback(null, true);
+          return;
+        }
+        callback(createHttpError(403, 'Origin not allowed'));
+      },
       credentials: true,
     }),
   );
@@ -43,8 +51,8 @@ export function createApp() {
     }
 
     const origin = req.header('origin');
-    if (origin && origin !== env.APP_URL) {
-      next(new Error('Origin not allowed'));
+    if (origin && origin !== appOrigin) {
+      next(createHttpError(403, 'Origin not allowed'));
       return;
     }
 
