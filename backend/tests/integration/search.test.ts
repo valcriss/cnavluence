@@ -8,6 +8,12 @@ const mockedPrisma = {
   $queryRaw: vi.fn(),
 };
 
+vi.mock('../../src/config/env.js', () => ({
+  env: {
+    SEARCH_PAGE_SIZE: 20,
+  },
+}));
+
 vi.mock('../../src/lib/prisma.js', () => ({
   prisma: mockedPrisma,
 }));

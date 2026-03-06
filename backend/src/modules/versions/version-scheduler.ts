@@ -1,4 +1,4 @@
-import { VersionReason } from '@prisma/client';
+import { VersionReason } from '../../lib/prisma-enums.js';
 import { env } from '../../config/env.js';
 import { prisma } from '../../lib/prisma.js';
 import { createVersionIfChanged } from './version.service.js';

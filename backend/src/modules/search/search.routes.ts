@@ -175,7 +175,7 @@ searchRouter.get('/', requireAuth, async (req, res) => {
     canonicalUrl: `/space/${row.spaceKey}/pages/${row.id}-${row.slug}`,
   }));
 
-  const last = data[data.length - 1];
+  const last = data.at(-1);
   const nextCursor = hasMore && last
     ? encodeCursor({
         createdAt: last.updatedAt.toISOString(),

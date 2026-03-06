@@ -1,8 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { extractLinkedPageIds } from '../../src/modules/backlinks/backlinks.service.js';
+import { vi } from 'vitest';
+
+vi.mock('../../src/lib/prisma.js', () => ({
+  prisma: {
+    linkIndex: {
+      findMany: vi.fn(),
+      deleteMany: vi.fn(),
+      createMany: vi.fn(),
+    },
+  },
+}));
 
 describe('backlinks extraction', () => {
-  it('extracts linked page ids from attrs.pageId and href', () => {
+  it('extracts linked page ids from attrs.pageId and href', async () => {
+    const { extractLinkedPageIds } = await import('../../src/modules/backlinks/backlinks.service.js');
     const pageA = 'caaaaaaaaaaaaaaaaaaaaaaa';
     const pageB = 'cbbbbbbbbbbbbbbbbbbbbbbb';
     const content = {
@@ -38,7 +49,8 @@ describe('backlinks extraction', () => {
     expect(ids.sort()).toEqual([pageA, pageB].sort());
   });
 
-  it('deduplicates repeated links and supports page:// scheme', () => {
+  it('deduplicates repeated links and supports page:// scheme', async () => {
+    const { extractLinkedPageIds } = await import('../../src/modules/backlinks/backlinks.service.js');
     const pageId = 'cddddddddddddddddddddddd';
     const content = {
       type: 'doc',

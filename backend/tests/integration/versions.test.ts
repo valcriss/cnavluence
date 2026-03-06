@@ -20,6 +20,7 @@ const mockedPrisma = {
 };
 
 const mockedCanViewPage = vi.fn();
+const mockedCanViewPageIncludingArchived = vi.fn();
 const mockedCanEditPage = vi.fn();
 const mockedCreateAuditLog = vi.fn();
 const mockedSyncBacklinksForPage = vi.fn();
@@ -37,6 +38,7 @@ vi.mock('../../src/modules/auth/auth-middleware.js', () => ({
 
 vi.mock('../../src/modules/permissions/permissions.service.js', () => ({
   canViewPage: mockedCanViewPage,
+  canViewPageIncludingArchived: mockedCanViewPageIncludingArchived,
   canEditPage: mockedCanEditPage,
 }));
 
@@ -51,10 +53,11 @@ vi.mock('../../src/modules/backlinks/backlinks.service.js', () => ({
 describe('versions routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockedCanViewPageIncludingArchived.mockResolvedValue(true);
   });
 
   it('GET /:pageId returns 403 when page is not viewable', async () => {
-    mockedCanViewPage.mockResolvedValue(false);
+    mockedCanViewPageIncludingArchived.mockResolvedValue(false);
     const { versionsRouter } = await import('../../src/modules/versions/versions.routes.js');
     const app = express();
     app.use(express.json());

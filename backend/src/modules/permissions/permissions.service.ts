@@ -1,8 +1,8 @@
 import createHttpError from 'http-errors';
-import { SpaceRole, RestrictionType } from '@prisma/client';
+import { SpaceRole, RestrictionType, type SpaceRoleValue } from '../../lib/prisma-enums.js';
 import { prisma } from '../../lib/prisma.js';
 
-export async function getUserSpaceRole(userId: string, spaceId: string): Promise<SpaceRole | null> {
+export async function getUserSpaceRole(userId: string, spaceId: string): Promise<SpaceRoleValue | null> {
   const membership = await prisma.spaceMembership.findUnique({
     where: {
       userId_spaceId: { userId, spaceId },
@@ -11,13 +11,13 @@ export async function getUserSpaceRole(userId: string, spaceId: string): Promise
   return membership?.role ?? null;
 }
 
-const roleRank: Record<SpaceRole, number> = {
+const roleRank: Record<SpaceRoleValue, number> = {
   SPACE_VIEWER: 1,
   SPACE_EDITOR: 2,
   SPACE_ADMIN: 3,
 };
 
-export function hasAtLeastRole(role: SpaceRole | null, minimum: SpaceRole): boolean {
+export function hasAtLeastRole(role: SpaceRoleValue | null, minimum: SpaceRoleValue): boolean {
   if (!role) {
     return false;
   }
@@ -80,7 +80,7 @@ export async function canEditPage(userId: string, pageId: string): Promise<boole
   );
 }
 
-export async function requireSpaceRole(userId: string, spaceId: string, minimumRole: SpaceRole): Promise<void> {
+export async function requireSpaceRole(userId: string, spaceId: string, minimumRole: SpaceRoleValue): Promise<void> {
   const role = await getUserSpaceRole(userId, spaceId);
   if (!hasAtLeastRole(role, minimumRole)) {
     throw createHttpError(403, 'Insufficient space permissions');
@@ -93,7 +93,7 @@ export async function requireSiteAdmin(userId: string): Promise<void> {
     select: { siteRole: true },
   });
 
-  if (!user || user.siteRole !== 'SITE_ADMIN') {
+  if (user?.siteRole !== 'SITE_ADMIN') {
     throw createHttpError(403, 'SITE_ADMIN role required');
   }
 }

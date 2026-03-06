@@ -16,6 +16,7 @@ const mockedPrisma = {
 
 const mockedPermissions = {
   canViewPage: vi.fn(),
+  canViewPageIncludingArchived: vi.fn(),
   requireSpaceRole: vi.fn(),
 };
 
@@ -36,6 +37,7 @@ vi.mock('../../src/modules/audit/audit-log.service.js', () => ({ createAuditLog:
 describe('pages backlinks route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockedPermissions.canViewPageIncludingArchived.mockResolvedValue(true);
     mockedPermissions.canViewPage.mockImplementation(async (_userId: string, pageId: string) => pageId !== SOURCE_HIDDEN_PAGE_ID);
     mockedPrisma.linkIndex.findMany.mockResolvedValue([
       {
@@ -78,7 +80,7 @@ describe('pages backlinks route', () => {
   });
 
   it('returns 403 when user cannot view target page', async () => {
-    mockedPermissions.canViewPage.mockResolvedValue(false);
+    mockedPermissions.canViewPageIncludingArchived.mockResolvedValue(false);
     const { pagesRouter } = await import('../../src/modules/pages/pages.routes.js');
     const app = express();
     app.use('/api/pages', pagesRouter);

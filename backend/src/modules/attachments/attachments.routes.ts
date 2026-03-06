@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import multer from 'multer';
 import createHttpError from 'http-errors';
-import { SpaceRole } from '@prisma/client';
 import { z } from 'zod';
+import { SpaceRole } from '../../lib/prisma-enums.js';
 import { requireAuth } from '../auth/auth-middleware.js';
 import { prisma } from '../../lib/prisma.js';
 import { canEditPage, canViewPage, requireSpaceRole } from '../permissions/permissions.service.js';
@@ -34,7 +34,7 @@ attachmentsRouter.post('/upload', requireAuth, upload.single('file'), async (req
       select: { id: true, spaceId: true },
     });
 
-    if (!page || page.spaceId !== spaceId) {
+    if (page?.spaceId !== spaceId) {
       throw createHttpError(400, 'Invalid pageId for space');
     }
 
@@ -82,7 +82,7 @@ attachmentsRouter.get('/', requireAuth, async (req, res) => {
       select: { id: true, spaceId: true },
     });
 
-    if (!page || page.spaceId !== query.spaceId) {
+    if (page?.spaceId !== query.spaceId) {
       throw createHttpError(400, 'Invalid pageId for space');
     }
 

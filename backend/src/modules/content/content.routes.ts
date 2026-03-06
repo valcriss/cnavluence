@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import createHttpError from 'http-errors';
 import { z } from 'zod';
-import { SpaceRole, VersionReason } from '@prisma/client';
+import { SpaceRole, VersionReason } from '../../lib/prisma-enums.js';
 import { requireAuth } from '../auth/auth-middleware.js';
 import { prisma } from '../../lib/prisma.js';
 import { canEditPage, canViewPageIncludingArchived, requireSpaceRole } from '../permissions/permissions.service.js';

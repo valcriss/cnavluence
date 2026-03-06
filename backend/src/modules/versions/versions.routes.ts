@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import createHttpError from 'http-errors';
-import { VersionReason } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma.js';
+import { VersionReason } from '../../lib/prisma-enums.js';
 import { requireAuth } from '../auth/auth-middleware.js';
 import { canEditPage, canViewPageIncludingArchived } from '../permissions/permissions.service.js';
 import { createAuditLog } from '../audit/audit-log.service.js';

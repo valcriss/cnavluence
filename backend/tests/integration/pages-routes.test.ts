@@ -25,6 +25,7 @@ const mockedPrisma = {
 
 const mockedPermissions = {
   canViewPage: vi.fn(),
+  canViewPageIncludingArchived: vi.fn(),
   requireSpaceRole: vi.fn(),
 };
 
@@ -49,6 +50,7 @@ describe('pages routes hardening', () => {
     vi.clearAllMocks();
     mockedPermissions.requireSpaceRole.mockResolvedValue(undefined);
     mockedPermissions.canViewPage.mockResolvedValue(true);
+    mockedPermissions.canViewPageIncludingArchived.mockResolvedValue(true);
   });
 
   it('PATCH /:pageId/rename creates redirect when slug changes', async () => {

@@ -1,5 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 
+vi.mock('../../src/lib/prisma.js', () => ({
+  prisma: {
+    pageVersion: {
+      findMany: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+  },
+}));
+
 vi.mock('../../src/config/env.js', () => ({
   env: {
     VERSION_RETENTION_ALL_DAYS: 30,

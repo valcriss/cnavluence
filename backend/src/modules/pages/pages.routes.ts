@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { RestrictionType, SpaceRole } from '@prisma/client';
 import createHttpError from 'http-errors';
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma.js';
+import { RestrictionType, SpaceRole } from '../../lib/prisma-enums.js';
 import { slugify } from '../../lib/slug.js';
 import { requireAuth } from '../auth/auth-middleware.js';
 import {
@@ -306,7 +306,7 @@ pagesRouter.post('/', requireAuth, async (req, res) => {
 
   if (payload.parentId) {
     const parent = await prisma.page.findUnique({ where: { id: payload.parentId } });
-    if (!parent || parent.spaceId !== payload.spaceId) {
+    if (parent?.spaceId !== payload.spaceId) {
       throw createHttpError(400, 'Invalid parent page');
     }
   }
@@ -320,7 +320,7 @@ pagesRouter.post('/', requireAuth, async (req, res) => {
       select: { id: true, spaceId: true, isTemplate: true },
     });
 
-    if (!templatePage || templatePage.spaceId !== payload.spaceId || !templatePage.isTemplate) {
+    if (templatePage?.spaceId !== payload.spaceId || !templatePage?.isTemplate) {
       throw createHttpError(400, 'Invalid template page');
     }
 
@@ -647,7 +647,7 @@ pagesRouter.get('/space/:spaceKey/pages/:pageIdSlug', requireAuth, async (req, r
     },
   });
 
-  if (!page || page.space.key !== req.params.spaceKey) {
+  if (page?.space.key !== req.params.spaceKey) {
     throw createHttpError(404, 'Page not found');
   }
 

@@ -8,7 +8,7 @@ import { verifyRefreshToken } from '../auth/tokens.js';
 import { canEditPage, canViewPage } from '../permissions/permissions.service.js';
 import { extractTextFromProseMirror } from '../../lib/prosemirror-text.js';
 import { createVersionIfChanged } from '../versions/version.service.js';
-import { VersionReason } from '@prisma/client';
+import { VersionReason } from '../../lib/prisma-enums.js';
 import { syncBacklinksForPage } from '../backlinks/backlinks.service.js';
 
 type RoomState = {
