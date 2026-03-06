@@ -28,6 +28,11 @@ services:
       REFRESH_COOKIE_SECURE: false
       AUTH_PROVIDER: local
       OIDC_ENABLED: false
+      OIDC_ISSUER: https://your-issuer.example/realms/your-realm
+      OIDC_CLIENT_ID: your-client-id
+      OIDC_CLIENT_SECRET: your-client-secret
+      OIDC_REDIRECT_URI: http://localhost:8080/api/auth/oidc/callback
+      OIDC_SCOPE: openid profile email
       OIDC_TRANSPARENT_LOGIN: true
       OIDC_CA_CERT_PATH: ""
       OIDC_TLS_INSECURE: false

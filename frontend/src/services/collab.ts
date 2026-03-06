@@ -1,6 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 
-const wsBaseUrl = import.meta.env.VITE_WS_BASE_URL ?? 'http://localhost:3000';
+const wsBaseUrl = import.meta.env.VITE_WS_BASE_URL ?? window.location.origin;
 
 type ConnectionState = {
   socket: Socket | null;
