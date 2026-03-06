@@ -1,17 +1,19 @@
-FROM node:22-alpine AS deps
+FROM public.ecr.aws/docker/library/node:24-alpine AS deps
 WORKDIR /app
+ARG NPM_CONFIG_STRICT_SSL=false
+ENV NPM_CONFIG_STRICT_SSL=${NPM_CONFIG_STRICT_SSL}
 COPY package.json package-lock.json* ./
 COPY backend/package.json backend/package.json
-RUN npm install
+RUN npm i -g npm@10 && npm ci
 
-FROM node:22-alpine AS builder
+FROM public.ecr.aws/docker/library/node:24-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm --workspace backend run prisma:generate
+RUN NODE_TLS_REJECT_UNAUTHORIZED=0 npm --workspace backend run prisma:generate
 RUN npm --workspace backend run build
 
-FROM node:22-alpine
+FROM public.ecr.aws/docker/library/node:24-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app/node_modules ./node_modules
